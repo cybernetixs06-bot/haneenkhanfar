@@ -16,7 +16,9 @@ class PartyRepositoryimpl implements PartyRepository{
 
   Future<void> addParty(PartyEntity party) async {
     final db = await _dbHelper.database;
+    party.ticketId= await generateTicketId();
     final model= Party.fromEntity(party); 
+
     await db.insert(
       _table,
       model.toJson(),
@@ -67,4 +69,29 @@ class PartyRepositoryimpl implements PartyRepository{
     final db = await _dbHelper.database;
     await db.delete(_table);
   }
+  @override
+Future<int> getPartiesCount() async {
+  final db = await _dbHelper.database;
+  final rows = await db.query(_table);
+
+  int count = 0;
+  for (final row in rows) {
+    count++;
+  }
+  return count;
+}
+
+@override
+Future<String> generateTicketId() async {
+  final db = await _dbHelper.database;
+  final rows = await db.query(_table, columns: [_ticketId]);
+
+  int highest = 0;
+  for (final row in rows) {
+    final ticket = row[_ticketId] as String; // e.g. "T-3"
+    final number = int.tryParse(ticket.replaceAll('T-', '')) ?? 0;
+    if (number > highest) highest = number;
+  }
+  return 'T-${highest + 1}';
+}
 }
