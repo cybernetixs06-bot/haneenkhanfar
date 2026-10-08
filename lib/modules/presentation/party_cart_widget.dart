@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:restorenttask_haneenkhanfar/modules/domain/party_entity.dart';
 import 'package:restorenttask_haneenkhanfar/modules/presentation/party_viewmode;.dart';
 
-
 class PartyCard extends ConsumerWidget {
   const PartyCard({super.key, required this.party});
 
   final PartyEntity party;
+
+  int get _aheadTickets {
+    final number = int.tryParse(party.ticketId.replaceAll('T-', '')) ?? 1;
+    return number - 1;
+  }
 
   Future<void> _openEditDialog(BuildContext context, WidgetRef ref) async {
     final viewModel = ref.read(partyViewModelProvider.notifier);
@@ -20,7 +24,7 @@ class PartyCard extends ConsumerWidget {
     final sizeController = TextEditingController(text: current.size.toString());
     final formKey = GlobalKey<FormState>();
 
-    final confirmed = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -54,13 +58,20 @@ class PartyCard extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
-                  Navigator.of(dialogContext).pop(true);
+                  final updated = PartyEntity(
+                    name: nameController.text.trim(),
+                    size: int.parse(sizeController.text),
+                    ticketId: current.ticketId,
+                  );
+
+                  viewModel.updateParty(updated);
+                  Navigator.of(dialogContext).pop();
                 }
               },
               child: const Text('OK'),
@@ -69,15 +80,6 @@ class PartyCard extends ConsumerWidget {
         );
       },
     );
-
-    if (confirmed == true) {
-      await viewModel.updateParty(
-        current.copyWith(
-          name: nameController.text.trim(),
-          size: int.parse(sizeController.text),
-        ),
-      );
-    }
 
     nameController.dispose();
     sizeController.dispose();
@@ -91,18 +93,20 @@ class PartyCard extends ConsumerWidget {
         leading: const CircleAvatar(child: Icon(Icons.groups)),
         title: Text(party.name),
         subtitle: Text('Size: ${party.size}'),
-trailing: Row(
-  mainAxisSize: MainAxisSize.min,
-  children: [
-    Text('ahead tickets: $_aheadTickets'),
-    IconButton(
-      icon: const Icon(Icons.delete, color: Colors.red),
-      onPressed: () => ref
-          .read(partyViewModelProvider.notifier)
-          .removeParty(party.ticketId),
-    ),
-  ],
-),      ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('ahead tickets: $_aheadTickets'),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => ref
+                  .read(partyViewModelProvider.notifier)
+                  .removeParty(party.ticketId),
+            ),
+          ],
+        ),
+        onTap: () => _openEditDialog(context, ref),
+      ),
     );
   }
 }
